@@ -1,0 +1,6 @@
+--- !ruby/object:Game
+answer: bewilder
+incorrect_guess_count: 0
+hint: !ruby/object:Hint
+  hint_string: ________
+guesses: []

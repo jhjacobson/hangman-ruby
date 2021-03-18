@@ -1,0 +1,18 @@
+--- !ruby/object:Game
+answer: ichthyologic
+incorrect_guess_count: 1
+hint: !ruby/object:Hint
+  hint_string: ic___y____ic
+guesses:
+- !ruby/object:Guess
+  guess: i
+  correct: true
+- !ruby/object:Guess
+  guess: c
+  correct: true
+- !ruby/object:Guess
+  guess: x
+  correct: false
+- !ruby/object:Guess
+  guess: y
+  correct: true

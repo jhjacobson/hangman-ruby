@@ -1,6 +1,9 @@
 # frozen_string_literal: false
 
 MAX_FAILS = 10
+SAVED_GAMES_DIR = 'saved_games/'.freeze
+
+require 'yaml'
 
 # Holds information about overall gamestate
 class Game
@@ -17,14 +20,14 @@ class Game
   end
 
   def process_guess
-    guess_str = 'Guess a character. You must enter a single character. Case does not matter.'
+    guess_str = 'Guess a single character (insensitive). Type save if you would like to save instead.'
     puts guess_str
     guess = gets.chomp
-    until valid_input?(guess) && new_guess?(guess)
+    until (valid_input?(guess) && new_guess?(guess)) || guess == 'save'
       puts "Incorrect format or previous guess. #{guess_str}"
       guess = gets.chomp
     end
-    update_guesses(guess)
+    guess == 'save' ? 'save' : update_guesses(guess)
   end
 
   def print_guesses
@@ -40,7 +43,7 @@ class Game
   attr_writer :guesses, :incorrect_guess_count
 
   def pick_random_word
-    words = File.readlines('dictionary.txt')
+    words = File.readlines('lib/dictionary.txt')
     answer = words.sample.rstrip
     answer = words.sample.rstrip until answer.length.between?(MIN_WORD_SIZE, MAX_WORD_SIZE)
     answer
@@ -53,7 +56,7 @@ class Game
   end
 
   def valid_input?(guess)
-    guess.match?('\A[A-Za-z]\z')
+    guess.match?(/\A[A-Za-z]\z/)
   end
 
   def new_guess?(guess)
@@ -139,15 +142,36 @@ def play_round(game)
   puts game.hint
   puts "\nHere are your guesses so far"
   puts game.print_guesses
-  game.process_guess
+  result = game.process_guess
+  'save' if result == 'save'
 end
 
 def play_game
-  game = Game.new
   instructions
-  play_round(game) until game.end_conditions
+  game = load_game? ? load_game : Game.new
+  until game.end_conditions
+    result = play_round(game)
+    break if result == 'save'
+  end
+  if result == 'save'
+    save_game(game)
+    return nil
+  end
+
   game.hint.hint_string == game.answer ? 'You won!' : 'You lost :('
   puts "The answer was #{game.answer}."
+end
+
+def load_game?
+  puts "\n\nWould you like to start a new game or load an existing game?"
+  puts 'Here are the existing games:'
+  print_saved_games
+  choice = ''
+  until %w[l a].include?(choice)
+    puts "Type 'l' to load an existing game or 'n' to start a new game."
+    choice = gets.chomp
+  end
+  choice == 'l'
 end
 
 def instructions
@@ -156,3 +180,53 @@ def instructions
   puts "For letters that are incorrect, they will appear #{'like this'.format(false)}."
   puts "For letters that are correct, they will appear #{'like this'.format(true)}."
 end
+
+def save_game(game)
+  bad_file = 'Invalid filename. You must use letters, numbers, underscores, and spaces and do not start with spaces.'
+  puts 'What would you like to name the save file? Below are the current saved games.'
+  Dir.chdir(SAVED_GAMES_DIR)
+  print_saved_games
+  filename = gets.chomp
+  puts bad_file until good_file_name?(filename)
+  File.open("#{filename}.yml", 'w') { |file| file.write(game.to_yaml) }
+  Dir.chdir('../')
+end
+
+def print_saved_games
+  games = Dir.glob('*.yml')
+  games.each_with_index { |game, num| puts "#{num + 1}) #{game.delete_suffix('.yml')}" }
+end
+
+def good_file_name?(filename)
+  bad_match = filename.match?(/ \z/) || filename.match?(/\A /)
+  good_match = filename.match?(/[a-zA-z0-9_ ]/)
+  good_match && !bad_match
+end
+
+def load_game
+  Dir.chdir(SAVED_GAMES_DIR)
+  filename = choose_file
+  return nil if filename.nil?
+
+  game = YAML.safe_load(File.read(filename), permitted_classes: [Game, Hint, Guess])
+  Dir.chdir('../')
+  game
+end
+
+def choose_file
+  games = Dir.glob('*.yml')
+  print_load_prompt
+  option = gets.chomp
+  until option == 'q' || !games[option.to_i - 1].nil?
+    puts 'Invalid selection. What game would you like to load? Choose the game number or enter q to quit prompt.'
+    option = gets.chomp
+  end
+  option == 'q' ? nil : games[option.to_i - 1]
+end
+
+def print_load_prompt
+  puts 'Which game would you like to load? Choose the game number or enter q to quit prompt.'
+  print_saved_games
+end
+
+# play_game

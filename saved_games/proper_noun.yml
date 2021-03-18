@@ -1,0 +1,9 @@
+--- !ruby/object:Game
+answer: Ionia
+incorrect_guess_count: 0
+hint: !ruby/object:Hint
+  hint_string: I__i_
+guesses:
+- !ruby/object:Guess
+  guess: i
+  correct: true
